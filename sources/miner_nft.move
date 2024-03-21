@@ -62,6 +62,7 @@ module blhn_sui_nft::miner_nft {
     /// Mints a new miner NFT.
     public entry fun mint(pub: &Publisher, name: String, image_url: String, ctx: &mut TxContext) {
         assert!(package::from_package<Miner>(pub), ENotOwner);
+        assert!(package::from_module<Miner>(pub), ENotOwner);
         let nft = Miner {
             id: object::new(ctx),
             name: name,
@@ -70,32 +71,40 @@ module blhn_sui_nft::miner_nft {
         transfer::public_transfer(nft, tx_context::sender(ctx));
     }
 
+    /// Burns a miner NFT.
+    public entry fun burn(nft: Miner) {
+        let Miner { id, name, image_url: _ } = nft;
+        object::delete(id);
+    }
 
     #[test_only]
     use sui::test_scenario;
     #[test_only]
+    use sui::test_utils;
+    #[test_only]
     const NFT_NAME: vector<u8> = b"Miner NFT";
     #[test_only]
     const NFT_IMAGE_URL: vector<u8> = b"bafybeifsp6xtj5htj5dc2ygbgijsr5jpvck56yqom6kkkuc2ujob3afzce";
+    #[test_only]
+    const PUBLISHER: address = @0xA;
 
     #[test]
-    fun mint_nft(){
-        let publisher = @0xA;
-        let scenario = test_scenario::begin(publisher);
+    fun test_mint(){
+        let scenario = test_scenario::begin(PUBLISHER);
         {
             init(MINER_NFT{}, test_scenario::ctx(&mut scenario))
         };
-        test_scenario::next_tx(&mut scenario, publisher);
+        test_scenario::next_tx(&mut scenario, PUBLISHER);
         {
-            let pub = test_scenario::take_from_sender<Publisher>(&scenario);
-            mint(&pub, string::utf8(NFT_NAME), string::utf8(NFT_IMAGE_URL), test_scenario::ctx(&mut scenario));
-            test_scenario::return_to_address<Publisher>(publisher, pub);
+            let owner = test_scenario::take_from_sender<Publisher>(&scenario);
+            mint(&owner, string::utf8(NFT_NAME), string::utf8(NFT_IMAGE_URL), test_scenario::ctx(&mut scenario));
+            test_scenario::return_to_address<Publisher>(PUBLISHER, owner);
         };
-        test_scenario::next_tx(&mut scenario, publisher);
+        test_scenario::next_tx(&mut scenario, PUBLISHER);
         {
             let nft = test_scenario::take_from_sender<Miner>(&scenario);
-            assert!(string::index_of(&nft.name, &string::utf8(NFT_NAME)) == 0, 1);
-            assert!(string::index_of(&nft.image_url, &string::utf8(NFT_IMAGE_URL)) == 0, 2);
+            test_utils::assert_eq(string::index_of(&nft.name, &string::utf8(NFT_NAME)), 0);
+            test_utils::assert_eq(string::index_of(&nft.image_url, &string::utf8(NFT_IMAGE_URL)), 0);
             test_scenario::return_to_sender<Miner>(&scenario, nft);
         };
         test_scenario::end(scenario);
