@@ -63,7 +63,7 @@ module skyward::skyward {
     }
 
     /// Mints a new Skyward NFT.
-    public entry fun mint(pub: &Publisher, count: u64, name: String, image_url: String, ctx: &mut TxContext) {
+    public entry fun mint(pub: &Publisher, count: u64, name: String, image_url: String, recipient: address, ctx: &mut TxContext) {
         assert!(package::from_package<Skyward>(pub), ENotOwner);
         assert!(package::from_module<Skyward>(pub), ENotOwner);
         assert!(count > 0, EInvalidArgument);
@@ -73,7 +73,7 @@ module skyward::skyward {
                 name: name,
                 image_url: image_url,
             };
-            transfer::public_transfer(nft, tx_context::sender(ctx));
+            transfer::public_transfer(nft, recipient);
             count = count - 1;
         }
     }
@@ -106,7 +106,7 @@ module skyward::skyward {
         test_scenario::next_tx(&mut scenario, PUBLISHER);
         {
             let owner = test_scenario::take_from_sender<Publisher>(&scenario);
-            mint(&owner, 10, string::utf8(NFT_NAME), string::utf8(NFT_IMAGE_URL), test_scenario::ctx(&mut scenario));
+            mint(&owner, 10, string::utf8(NFT_NAME), string::utf8(NFT_IMAGE_URL), PUBLISHER, test_scenario::ctx(&mut scenario));
             test_scenario::return_to_address<Publisher>(PUBLISHER, owner);
         };
         test_scenario::next_tx(&mut scenario, PUBLISHER);
