@@ -15,6 +15,8 @@ module embryo::embryo {
     /// The error code for when the sender is not owner of NFT contract.
     const ENotOwner: u64 = 0;
 
+    /// The error code for when the argument is invalid.
+    const EInvalidArgument: u64 = 1;
 
     // === Structs ===
 
@@ -60,15 +62,19 @@ module embryo::embryo {
     }
 
     /// Mints a new Embryo NFT.
-    public entry fun mint(pub: &Publisher, name: String, image_url: String, ctx: &mut TxContext) {
+    public entry fun mint(pub: &Publisher, count: u64, name: String, image_url: String, recipient: address, ctx: &mut TxContext) {
         assert!(package::from_package<Embryo>(pub), ENotOwner);
         assert!(package::from_module<Embryo>(pub), ENotOwner);
-        let nft = Embryo {
-            id: object::new(ctx),
-            name: name,
-            image_url: image_url,
-        };
-        transfer::public_transfer(nft, tx_context::sender(ctx));
+        assert!(count > 0, EInvalidArgument);
+        while(count > 0) {
+            let nft = Embryo {
+                id: object::new(ctx),
+                name: name,
+                image_url: image_url,
+            };
+            transfer::public_transfer(nft, recipient);
+            count = count - 1;
+        }
     }
 
     /// Burns a Embryo NFT.
@@ -81,6 +87,8 @@ module embryo::embryo {
     use sui::test_scenario;
     #[test_only]
     use sui::test_utils;
+    #[test_only]
+    use std::vector;
     #[test_only]
     const NFT_NAME: vector<u8> = b"Embryo NFT";
     #[test_only]
@@ -97,15 +105,20 @@ module embryo::embryo {
         test_scenario::next_tx(&mut scenario, PUBLISHER);
         {
             let owner = test_scenario::take_from_sender<Publisher>(&scenario);
-            mint(&owner, string::utf8(NFT_NAME), string::utf8(NFT_IMAGE_URL), test_scenario::ctx(&mut scenario));
+            mint(&owner, 10, string::utf8(NFT_NAME), string::utf8(NFT_IMAGE_URL), PUBLISHER, test_scenario::ctx(&mut scenario));
             test_scenario::return_to_address<Publisher>(PUBLISHER, owner);
         };
         test_scenario::next_tx(&mut scenario, PUBLISHER);
         {
-            let nft = test_scenario::take_from_sender<Embryo>(&scenario);
-            test_utils::assert_eq(string::index_of(&nft.name, &string::utf8(NFT_NAME)), 0);
-            test_utils::assert_eq(string::index_of(&nft.image_url, &string::utf8(NFT_IMAGE_URL)), 0);
-            test_scenario::return_to_sender<Embryo>(&scenario, nft);
+            let nft_ids = test_scenario::ids_for_sender<Embryo>(&scenario);
+            test_utils::assert_eq(vector::length(&nft_ids), 10);
+
+            while(!vector::is_empty(&nft_ids)) {
+                let nft = test_scenario::take_from_sender_by_id<Embryo>(&scenario, vector::pop_back(&mut nft_ids));
+                test_utils::assert_eq(string::index_of(&nft.name, &string::utf8(NFT_NAME)), 0);
+                test_utils::assert_eq(string::index_of(&nft.image_url, &string::utf8(NFT_IMAGE_URL)), 0);
+                test_scenario::return_to_sender<Embryo>(&scenario, nft);
+            };
         };
         test_scenario::end(scenario);
     }
