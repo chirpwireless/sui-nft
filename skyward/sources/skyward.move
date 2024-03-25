@@ -1,5 +1,5 @@
 /// This module defines an NFT for representing miners in the Sui ecosystem.
-module blhn_sui_nft::skyward {
+module skyward::skyward {
     // === Imports ===
 
     use std::string::{Self, String};
