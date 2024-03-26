@@ -90,12 +90,6 @@ module skyward_keeper::skywardkeeper {
         transfer::transfer(nft, recipient);
     }
 
-    /// Burns a SkywardKeeper NFT.
-    public entry fun burn(nft: SkywardKeeper) {
-        let SkywardKeeper { id, name: _, image_url: _ } = nft;
-        object::delete(id);
-    }
-
     #[test_only]
     use sui::test_scenario;
     #[test_only]
