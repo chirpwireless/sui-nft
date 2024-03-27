@@ -32,7 +32,7 @@ module skyward_keeper::skywardkeeper {
     }
 
     /// The transfer capability to authorize the transfer of a Skyward Keeper NFT.
-    struct TransferCap has key, store {
+    struct TransferCap<phantom T> has key, store {
         /// The unique identifier of the capability.
         id: UID,
     }
@@ -65,7 +65,7 @@ module skyward_keeper::skywardkeeper {
         display::update_version(&mut display);
 
         transfer::public_transfer(publisher, tx_context::sender(ctx));
-        transfer::public_transfer(TransferCap{ id: object::new(ctx) }, tx_context::sender(ctx));
+        transfer::public_transfer(TransferCap<SKYWARDKEEPER>{ id: object::new(ctx) }, tx_context::sender(ctx));
         transfer::public_transfer(display, tx_context::sender(ctx));
     }
 
@@ -86,7 +86,7 @@ module skyward_keeper::skywardkeeper {
     }
 
     /// Transfers a SkywardKeeper NFT to a new owner.
-    public entry fun transfer(_: &TransferCap, nft: SkywardKeeper, recipient: address) {
+    public entry fun transfer(_: &TransferCap<SKYWARDKEEPER>, nft: SkywardKeeper, recipient: address) {
         transfer::transfer(nft, recipient);
     }
 
@@ -141,7 +141,7 @@ module skyward_keeper::skywardkeeper {
         test_scenario::next_tx(&mut scenario, PUBLISHER);
         {
             // The TransferCap might be transferred to another account
-            let cap = test_scenario::take_from_sender<TransferCap>(&scenario);
+            let cap = test_scenario::take_from_sender<TransferCap<SKYWARDKEEPER>>(&scenario);
             transfer::public_transfer(cap, sender);
             let owner = test_scenario::take_from_sender<Publisher>(&scenario);
             mint(&owner, 1, string::utf8(NFT_NAME), string::utf8(NFT_IMAGE_URL), sender, test_scenario::ctx(&mut scenario));
@@ -149,10 +149,10 @@ module skyward_keeper::skywardkeeper {
         };
         test_scenario::next_tx(&mut scenario, sender);
         {
-            let cap = test_scenario::take_from_sender<TransferCap>(&scenario);
+            let cap = test_scenario::take_from_sender<TransferCap<SKYWARDKEEPER>>(&scenario);
             let nft = test_scenario::take_from_sender<SkywardKeeper>(&scenario);
             transfer(&cap, nft, receiver);
-            test_scenario::return_to_sender<TransferCap>(&scenario, cap);
+            test_scenario::return_to_sender<TransferCap<SKYWARDKEEPER>>(&scenario, cap);
         };
         test_scenario::next_tx(&mut scenario, receiver);
         {
