@@ -1,5 +1,5 @@
-/// This module defines an NFT for representing miners in the Sui ecosystem.
-module rare::rare {
+/// This module defines an NFT that offer perks.
+module nest::nest {
     // === Imports ===
 
     use std::string::{Self, String};
@@ -21,8 +21,8 @@ module rare::rare {
 
     // === Structs ===
 
-    /// The Rare NFT represents user perks.
-    struct Rare has key {
+    /// The Nest NFT represents user perks.
+    struct Nest has key {
         /// The unique identifier of NFT.
         id: UID,
         /// The name of the NFT.
@@ -37,13 +37,13 @@ module rare::rare {
         id: UID,
     }
 
-    /// The one time witness for the Rare NFT.
-    struct RARE has drop{}
+    /// The one time witness for the Nest NFT.
+    struct NEST has drop{}
 
 
   // === Admin Functions ===
 
-    fun init(otw: RARE, ctx: &mut TxContext) {
+    fun init(otw: NEST, ctx: &mut TxContext) {
         let keys = vector[
             string::utf8(b"name"),
             string::utf8(b"image_url"),
@@ -53,29 +53,29 @@ module rare::rare {
         let values = vector[
             string::utf8(b"{name}"),
             string::utf8(b"ipfs://{image_url}"),
-            string::utf8(b"Rare NFT"),
+            string::utf8(b"Nest NFT"),
             string::utf8(b"https://chirptoken.io/"),
         ];
 
         let publisher = package::claim(otw, ctx);
-        let display = display::new_with_fields<Rare>(
+        let display = display::new_with_fields<Nest>(
             &publisher, keys, values, ctx
         );
 
         display::update_version(&mut display);
 
         transfer::public_transfer(publisher, tx_context::sender(ctx));
-        transfer::public_transfer(TransferCap<RARE>{ id: object::new(ctx) }, tx_context::sender(ctx));
+        transfer::public_transfer(TransferCap<NEST>{ id: object::new(ctx) }, tx_context::sender(ctx));
         transfer::public_transfer(display, tx_context::sender(ctx));
     }
 
-    /// Mints a new Rare NFT.
+    /// Mints a new Nest NFT.
     public entry fun mint(pub: &Publisher, count: u64, name: String, image_url: String, recipient: address, ctx: &mut TxContext) {
-        assert!(package::from_package<Rare>(pub), ENotOwner);
-        assert!(package::from_module<Rare>(pub), ENotOwner);
+        assert!(package::from_package<Nest>(pub), ENotOwner);
+        assert!(package::from_module<Nest>(pub), ENotOwner);
         assert!(count > 0, EInvalidArgument);
         while(count > 0) {
-            let nft = Rare {
+            let nft = Nest {
                 id: object::new(ctx),
                 name: name,
                 image_url: image_url,
@@ -85,8 +85,8 @@ module rare::rare {
         }
     }
 
-    /// Transfers a Rare NFT to a new owner.
-    public entry fun transfer(_: &TransferCap<RARE>, nft: Rare, recipient: address) {
+    /// Transfers a Nest NFT to a new owner.
+    public entry fun transfer(_: &TransferCap<NEST>, nft: Nest, recipient: address) {
         transfer::transfer(nft, recipient);
     }
 
@@ -97,7 +97,7 @@ module rare::rare {
     #[test_only]
     use std::vector;
     #[test_only]
-    const NFT_NAME: vector<u8> = b"Rare NFT";
+    const NFT_NAME: vector<u8> = b"Nest NFT";
     #[test_only]
     const NFT_IMAGE_URL: vector<u8> = b"bafybeifsp6xtj5htj5dc2ygbgijsr5jpvck56yqom6kkkuc2ujob3afzce";
     #[test_only]
@@ -107,7 +107,7 @@ module rare::rare {
     fun test_mint(){
         let scenario = test_scenario::begin(PUBLISHER);
         {
-            init(RARE{}, test_scenario::ctx(&mut scenario))
+            init(NEST{}, test_scenario::ctx(&mut scenario))
         };
         test_scenario::next_tx(&mut scenario, PUBLISHER);
         {
@@ -117,14 +117,14 @@ module rare::rare {
         };
         test_scenario::next_tx(&mut scenario, PUBLISHER);
         {
-            let nft_ids = test_scenario::ids_for_sender<Rare>(&scenario);
+            let nft_ids = test_scenario::ids_for_sender<Nest>(&scenario);
             test_utils::assert_eq(vector::length(&nft_ids), 10);
 
             while(!vector::is_empty(&nft_ids)) {
-                let nft = test_scenario::take_from_sender_by_id<Rare>(&scenario, vector::pop_back(&mut nft_ids));
+                let nft = test_scenario::take_from_sender_by_id<Nest>(&scenario, vector::pop_back(&mut nft_ids));
                 test_utils::assert_eq(string::index_of(&nft.name, &string::utf8(NFT_NAME)), 0);
                 test_utils::assert_eq(string::index_of(&nft.image_url, &string::utf8(NFT_IMAGE_URL)), 0);
-                test_scenario::return_to_sender<Rare>(&scenario, nft);
+                test_scenario::return_to_sender<Nest>(&scenario, nft);
             };
         };
         test_scenario::end(scenario);
@@ -136,12 +136,12 @@ module rare::rare {
         let receiver =  @0xC;
         let scenario = test_scenario::begin(PUBLISHER);
         {
-            init(RARE{}, test_scenario::ctx(&mut scenario))
+            init(NEST{}, test_scenario::ctx(&mut scenario))
         };
         test_scenario::next_tx(&mut scenario, PUBLISHER);
         {
             // The TransferCap might be transferred to another account
-            let cap = test_scenario::take_from_sender<TransferCap<RARE>>(&scenario);
+            let cap = test_scenario::take_from_sender<TransferCap<NEST>>(&scenario);
             transfer::public_transfer(cap, sender);
             let owner = test_scenario::take_from_sender<Publisher>(&scenario);
             mint(&owner, 1, string::utf8(NFT_NAME), string::utf8(NFT_IMAGE_URL), sender, test_scenario::ctx(&mut scenario));
@@ -149,14 +149,14 @@ module rare::rare {
         };
         test_scenario::next_tx(&mut scenario, sender);
         {
-            let cap = test_scenario::take_from_sender<TransferCap<RARE>>(&scenario);
-            let nft = test_scenario::take_from_sender<Rare>(&scenario);
+            let cap = test_scenario::take_from_sender<TransferCap<NEST>>(&scenario);
+            let nft = test_scenario::take_from_sender<Nest>(&scenario);
             transfer(&cap, nft, receiver);
-            test_scenario::return_to_sender<TransferCap<RARE>>(&scenario, cap);
+            test_scenario::return_to_sender<TransferCap<NEST>>(&scenario, cap);
         };
         test_scenario::next_tx(&mut scenario, receiver);
         {
-            let nft_ids = test_scenario::ids_for_sender<Rare>(&scenario);
+            let nft_ids = test_scenario::ids_for_sender<Nest>(&scenario);
             test_utils::assert_eq(vector::length(&nft_ids), 1);
         };
         test_scenario::end(scenario);
