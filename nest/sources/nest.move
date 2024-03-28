@@ -27,8 +27,12 @@ module nest::nest {
         id: UID,
         /// The name of the NFT.
         name: String,
+        /// The description of the NFT.
+        description: String,
         /// The URL of the image representing the NFT.
         image_url: String,
+        /// The URL of the project associated with the NFT.
+        project_url: String,
     }
 
     /// The transfer capability to authorize the transfer of a NFT.
@@ -53,8 +57,8 @@ module nest::nest {
         let values = vector[
             string::utf8(b"{name}"),
             string::utf8(b"ipfs://{image_url}"),
-            string::utf8(b"Nest NFT"),
-            string::utf8(b"https://chirptoken.io/"),
+            string::utf8(b"{description}"),
+            string::utf8(b"{project_url}"),
         ];
 
         let publisher = package::claim(otw, ctx);
@@ -70,7 +74,16 @@ module nest::nest {
     }
 
     /// Mints a new Nest NFT.
-    public entry fun mint(pub: &Publisher, count: u64, name: String, image_url: String, recipient: address, ctx: &mut TxContext) {
+    public entry fun mint(
+            pub: &Publisher,
+            count: u64,
+            name: String,
+            image_url: String,
+            description:String,
+            project_url: String,
+            recipient: address,
+            ctx: &mut TxContext,
+        ) {
         assert!(package::from_package<Nest>(pub), ENotOwner);
         assert!(package::from_module<Nest>(pub), ENotOwner);
         assert!(count > 0, EInvalidArgument);
@@ -78,6 +91,8 @@ module nest::nest {
             let nft = Nest {
                 id: object::new(ctx),
                 name: name,
+                description: description,
+                project_url: project_url,
                 image_url: image_url,
             };
             transfer::transfer(nft, recipient);
@@ -90,18 +105,14 @@ module nest::nest {
         transfer::transfer(nft, recipient);
     }
 
-    #[test_only]
-    use sui::test_scenario;
-    #[test_only]
-    use sui::test_utils;
-    #[test_only]
-    use std::vector;
-    #[test_only]
-    const NFT_NAME: vector<u8> = b"Nest NFT";
-    #[test_only]
-    const NFT_IMAGE_URL: vector<u8> = b"bafybeifsp6xtj5htj5dc2ygbgijsr5jpvck56yqom6kkkuc2ujob3afzce";
-    #[test_only]
-    const PUBLISHER: address = @0xA;
+    #[test_only] use sui::test_scenario;
+    #[test_only] use sui::test_utils;
+    #[test_only] use std::vector;
+    #[test_only] const NFT_NAME: vector<u8> = b"Nest NFT";
+    #[test_only] const NFT_IMAGE_URL: vector<u8> = b"bafybeifsp6xtj5htj5dc2ygbgijsr5jpvck56yqom6kkkuc2ujob3afzce";
+    #[test_only] const NFT_DESCRIPTION: vector<u8> = b"NestNFT Description";
+    #[test_only] const NFT_PROJECT_URL: vector<u8> = b"https://nest.com";
+    #[test_only] const PUBLISHER: address = @0xA;
 
     #[test]
     fun test_mint(){
@@ -112,7 +123,16 @@ module nest::nest {
         test_scenario::next_tx(&mut scenario, PUBLISHER);
         {
             let owner = test_scenario::take_from_sender<Publisher>(&scenario);
-            mint(&owner, 10, string::utf8(NFT_NAME), string::utf8(NFT_IMAGE_URL), PUBLISHER, test_scenario::ctx(&mut scenario));
+            mint(
+                &owner,
+                10,
+                string::utf8(NFT_NAME),
+                string::utf8(NFT_IMAGE_URL),
+                string::utf8(NFT_DESCRIPTION),
+                string::utf8(NFT_PROJECT_URL),
+                PUBLISHER,
+                test_scenario::ctx(&mut scenario),
+            );
             test_scenario::return_to_address<Publisher>(PUBLISHER, owner);
         };
         test_scenario::next_tx(&mut scenario, PUBLISHER);
@@ -144,7 +164,16 @@ module nest::nest {
             let cap = test_scenario::take_from_sender<TransferCap<NEST>>(&scenario);
             transfer::public_transfer(cap, sender);
             let owner = test_scenario::take_from_sender<Publisher>(&scenario);
-            mint(&owner, 1, string::utf8(NFT_NAME), string::utf8(NFT_IMAGE_URL), sender, test_scenario::ctx(&mut scenario));
+            mint(
+                &owner,
+                1,
+                string::utf8(NFT_NAME),
+                string::utf8(NFT_IMAGE_URL),
+                string::utf8(NFT_DESCRIPTION),
+                string::utf8(NFT_PROJECT_URL),
+                sender,
+                test_scenario::ctx(&mut scenario),
+            );
             test_scenario::return_to_address<Publisher>(PUBLISHER, owner);
         };
         test_scenario::next_tx(&mut scenario, sender);
