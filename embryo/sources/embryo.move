@@ -32,8 +32,6 @@ module embryo::embryo {
         image_url: String,
         /// The URL of the project associated with the NFT.
         project_url: String,
-        /// The link associated with NFT.
-        link: String,
     }
 
     /// The one time witness for the Embryo NFT.
@@ -48,14 +46,12 @@ module embryo::embryo {
             string::utf8(b"image_url"),
             string::utf8(b"description"),
             string::utf8(b"project_url"),
-            string::utf8(b"link"),
         ];
         let values = vector[
             string::utf8(b"{name}"),
             string::utf8(b"ipfs://{image_url}"),
             string::utf8(b"{description}"),
             string::utf8(b"{project_url}"),
-            string::utf8(b"{link}"),
         ];
 
         let publisher = package::claim(otw, ctx);
@@ -77,7 +73,6 @@ module embryo::embryo {
             image_url: String,
             description: String,
             project_url: String,
-            link: String,
             recipient: address,
             ctx: &mut TxContext,
         ) {
@@ -91,7 +86,6 @@ module embryo::embryo {
                 description: description,
                 project_url: project_url,
                 image_url: image_url,
-                link: link,
             };
             transfer::public_transfer(nft, recipient);
             count = count - 1;
@@ -100,7 +94,7 @@ module embryo::embryo {
 
     /// Burns a Embryo NFT.
     public entry fun burn(nft: Embryo) {
-        let Embryo { id, name: _, description: _, project_url: _, image_url: _, link: _ } = nft;
+        let Embryo { id, name: _, description: _, project_url: _, image_url: _ } = nft;
         object::delete(id);
     }
 
@@ -111,7 +105,6 @@ module embryo::embryo {
     #[test_only] const NFT_IMAGE_URL: vector<u8> = b"bafybeifsp6xtj5htj5dc2ygbgijsr5jpvck56yqom6kkkuc2ujob3afzce";
     #[test_only] const NFT_DESCRIPTION: vector<u8> = b"Embryo NFT Description";
     #[test_only] const NFT_PROJECT_URL: vector<u8> = b"https://embryo.com";
-    #[test_only] const NFT_LINK: vector<u8> = b"https://embryo.com/link";
     #[test_only] const PUBLISHER: address = @0xA;
 
     #[test]
@@ -130,7 +123,6 @@ module embryo::embryo {
                 string::utf8(NFT_IMAGE_URL),
                 string::utf8(NFT_DESCRIPTION),
                 string::utf8(NFT_PROJECT_URL),
-                string::utf8(NFT_LINK),
                 PUBLISHER,
                 test_scenario::ctx(&mut scenario),
             );
