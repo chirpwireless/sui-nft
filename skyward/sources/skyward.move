@@ -105,25 +105,57 @@ module skyward::skyward {
         transfer::transfer(nft, recipient);
     }
 
-    #[test_only] use sui::test_scenario;
-    #[test_only] use sui::test_utils;
-    #[test_only] use std::vector;
-    #[test_only] const NFT_NAME: vector<u8> = b"Skyward NFT";
-    #[test_only] const NFT_IMAGE_URL: vector<u8> = b"bafybeifsp6xtj5htj5dc2ygbgijsr5jpvck56yqom6kkkuc2ujob3afzce";
-    #[test_only] const NFT_DESCRIPTION: vector<u8> = b"SkywardNFT Description";
-    #[test_only] const NFT_PROJECT_URL: vector<u8> = b"https://skyward.com";
-    #[test_only] const PUBLISHER: address = @0xA;
+    #[test_only]
+    public fun init_for_testing(ctx: &mut TxContext) {
+        init(SKYWARD{}, ctx)
+    }
+
+    #[test_only]
+    public fun name(nft: &Skyward): String {
+        nft.name
+    }
+
+    #[test_only]
+    public fun image_url(nft: &Skyward): String {
+        nft.image_url
+    }
+
+    #[test_only]
+    public fun description(nft: &Skyward): String {
+        nft.description
+    }
+
+    #[test_only]
+    public fun project_url(nft: &Skyward): String {
+        nft.project_url
+    }
+}
+
+#[test_only]
+module skyward::skyward_tests {
+    use skyward::skyward::{Self, SKYWARD, Skyward, TransferCap};
+    use std::string::{Self};
+    use std::vector;
+    use sui::package::{Publisher};
+    use sui::test_scenario;
+    use sui::test_utils;
+    use sui::transfer;
+    const NFT_NAME: vector<u8> = b"Skyward NFT";
+    const NFT_IMAGE_URL: vector<u8> = b"bafybeifsp6xtj5htj5dc2ygbgijsr5jpvck56yqom6kkkuc2ujob3afzce";
+    const NFT_DESCRIPTION: vector<u8> = b"SkywardNFT Description";
+    const NFT_PROJECT_URL: vector<u8> = b"https://skyward.com";
+    const PUBLISHER: address = @0xA;
 
     #[test]
     fun test_mint(){
         let scenario = test_scenario::begin(PUBLISHER);
         {
-            init(SKYWARD{}, test_scenario::ctx(&mut scenario))
+            skyward::init_for_testing(test_scenario::ctx(&mut scenario))
         };
         test_scenario::next_tx(&mut scenario, PUBLISHER);
         {
             let owner = test_scenario::take_from_sender<Publisher>(&scenario);
-            mint(
+            skyward::mint(
                 &owner,
                 10,
                 string::utf8(NFT_NAME),
@@ -142,8 +174,10 @@ module skyward::skyward {
 
             while(!vector::is_empty(&nft_ids)) {
                 let nft = test_scenario::take_from_sender_by_id<Skyward>(&scenario, vector::pop_back(&mut nft_ids));
-                test_utils::assert_eq(string::index_of(&nft.name, &string::utf8(NFT_NAME)), 0);
-                test_utils::assert_eq(string::index_of(&nft.image_url, &string::utf8(NFT_IMAGE_URL)), 0);
+                test_utils::assert_eq(string::index_of(&skyward::name(&nft), &string::utf8(NFT_NAME)), 0);
+                test_utils::assert_eq(string::index_of(&skyward::image_url(&nft), &string::utf8(NFT_IMAGE_URL)), 0);
+                test_utils::assert_eq(string::index_of(&skyward::description(&nft), &string::utf8(NFT_DESCRIPTION)), 0);
+                test_utils::assert_eq(string::index_of(&skyward::project_url(&nft), &string::utf8(NFT_PROJECT_URL)), 0);
                 test_scenario::return_to_sender<Skyward>(&scenario, nft);
             };
         };
@@ -156,7 +190,7 @@ module skyward::skyward {
         let receiver =  @0xC;
         let scenario = test_scenario::begin(PUBLISHER);
         {
-            init(SKYWARD{}, test_scenario::ctx(&mut scenario))
+            skyward::init_for_testing(test_scenario::ctx(&mut scenario))
         };
         test_scenario::next_tx(&mut scenario, PUBLISHER);
         {
@@ -164,7 +198,7 @@ module skyward::skyward {
             let cap = test_scenario::take_from_sender<TransferCap<SKYWARD>>(&scenario);
             transfer::public_transfer(cap, sender);
             let owner = test_scenario::take_from_sender<Publisher>(&scenario);
-            mint(
+            skyward::mint(
                 &owner,
                 1,
                 string::utf8(NFT_NAME),
@@ -180,7 +214,7 @@ module skyward::skyward {
         {
             let cap = test_scenario::take_from_sender<TransferCap<SKYWARD>>(&scenario);
             let nft = test_scenario::take_from_sender<Skyward>(&scenario);
-            transfer(&cap, nft, receiver);
+            skyward::transfer(&cap, nft, receiver);
             test_scenario::return_to_sender<TransferCap<SKYWARD>>(&scenario, cap);
         };
         test_scenario::next_tx(&mut scenario, receiver);
