@@ -105,25 +105,57 @@ module nest::nest {
         transfer::transfer(nft, recipient);
     }
 
-    #[test_only] use sui::test_scenario;
-    #[test_only] use sui::test_utils;
-    #[test_only] use std::vector;
-    #[test_only] const NFT_NAME: vector<u8> = b"Nest NFT";
-    #[test_only] const NFT_IMAGE_URL: vector<u8> = b"bafybeifsp6xtj5htj5dc2ygbgijsr5jpvck56yqom6kkkuc2ujob3afzce";
-    #[test_only] const NFT_DESCRIPTION: vector<u8> = b"NestNFT Description";
-    #[test_only] const NFT_PROJECT_URL: vector<u8> = b"https://nest.com";
-    #[test_only] const PUBLISHER: address = @0xA;
+    #[test_only]
+    public fun init_for_testing(ctx: &mut TxContext) {
+        init(NEST{}, ctx)
+    }
+
+    #[test_only]
+    public fun name(nft: &Nest): String {
+        nft.name
+    }
+
+    #[test_only]
+    public fun image_url(nft: &Nest): String {
+        nft.image_url
+    }
+
+    #[test_only]
+    public fun description(nft: &Nest): String {
+        nft.description
+    }
+
+    #[test_only]
+    public fun project_url(nft: &Nest): String {
+        nft.project_url
+    }
+}
+
+#[test_only]
+module nest::nest_tests {
+    use nest::nest::{Self, NEST, Nest, TransferCap};
+    use std::string::{Self};
+    use std::vector;
+    use sui::package::{Publisher};
+    use sui::test_scenario;
+    use sui::test_utils;
+    use sui::transfer;
+    const NFT_NAME: vector<u8> = b"Nest NFT";
+    const NFT_IMAGE_URL: vector<u8> = b"bafybeifsp6xtj5htj5dc2ygbgijsr5jpvck56yqom6kkkuc2ujob3afzce";
+    const NFT_DESCRIPTION: vector<u8> = b"NestNFT Description";
+    const NFT_PROJECT_URL: vector<u8> = b"https://nest.com";
+    const PUBLISHER: address = @0xA;
 
     #[test]
     fun test_mint(){
         let scenario = test_scenario::begin(PUBLISHER);
         {
-            init(NEST{}, test_scenario::ctx(&mut scenario))
+            nest::init_for_testing(test_scenario::ctx(&mut scenario))
         };
         test_scenario::next_tx(&mut scenario, PUBLISHER);
         {
             let owner = test_scenario::take_from_sender<Publisher>(&scenario);
-            mint(
+            nest::mint(
                 &owner,
                 10,
                 string::utf8(NFT_NAME),
@@ -142,8 +174,10 @@ module nest::nest {
 
             while(!vector::is_empty(&nft_ids)) {
                 let nft = test_scenario::take_from_sender_by_id<Nest>(&scenario, vector::pop_back(&mut nft_ids));
-                test_utils::assert_eq(string::index_of(&nft.name, &string::utf8(NFT_NAME)), 0);
-                test_utils::assert_eq(string::index_of(&nft.image_url, &string::utf8(NFT_IMAGE_URL)), 0);
+                test_utils::assert_eq(string::index_of(&nest::name(&nft), &string::utf8(NFT_NAME)), 0);
+                test_utils::assert_eq(string::index_of(&nest::image_url(&nft), &string::utf8(NFT_IMAGE_URL)), 0);
+                test_utils::assert_eq(string::index_of(&nest::description(&nft), &string::utf8(NFT_DESCRIPTION)), 0);
+                test_utils::assert_eq(string::index_of(&nest::project_url(&nft), &string::utf8(NFT_PROJECT_URL)), 0);
                 test_scenario::return_to_sender<Nest>(&scenario, nft);
             };
         };
@@ -156,7 +190,7 @@ module nest::nest {
         let receiver =  @0xC;
         let scenario = test_scenario::begin(PUBLISHER);
         {
-            init(NEST{}, test_scenario::ctx(&mut scenario))
+            nest::init_for_testing(test_scenario::ctx(&mut scenario))
         };
         test_scenario::next_tx(&mut scenario, PUBLISHER);
         {
@@ -164,7 +198,7 @@ module nest::nest {
             let cap = test_scenario::take_from_sender<TransferCap<NEST>>(&scenario);
             transfer::public_transfer(cap, sender);
             let owner = test_scenario::take_from_sender<Publisher>(&scenario);
-            mint(
+            nest::mint(
                 &owner,
                 1,
                 string::utf8(NFT_NAME),
@@ -180,7 +214,7 @@ module nest::nest {
         {
             let cap = test_scenario::take_from_sender<TransferCap<NEST>>(&scenario);
             let nft = test_scenario::take_from_sender<Nest>(&scenario);
-            transfer(&cap, nft, receiver);
+            nest::transfer(&cap, nft, receiver);
             test_scenario::return_to_sender<TransferCap<NEST>>(&scenario, cap);
         };
         test_scenario::next_tx(&mut scenario, receiver);
@@ -190,4 +224,5 @@ module nest::nest {
         };
         test_scenario::end(scenario);
     }
+
 }
