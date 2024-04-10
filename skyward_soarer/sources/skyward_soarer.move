@@ -105,26 +105,63 @@ module skyward_soarer::skyward_soarer {
         object::delete(id);
     }
 
-    #[test_only] use sui::test_scenario;
-    #[test_only] use sui::test_utils;
-    #[test_only] use std::vector;
-    #[test_only] const NFT_NAME: vector<u8> = b"SkywardSoarer NFT";
-    #[test_only] const NFT_IMAGE_URL: vector<u8> = b"bafybeifsp6xtj5htj5dc2ygbgijsr5jpvck56yqom6kkkuc2ujob3afzce";
-    #[test_only] const NFT_DESCRIPTION: vector<u8> = b"SkywardSoarer NFT Description";
-    #[test_only] const NFT_PROJECT_URL: vector<u8> = b"https://skyward.soarer.com";
-    #[test_only] const NFT_LINK: vector<u8> = b"https://skyward.soarer.com/link";
-    #[test_only] const PUBLISHER: address = @0xA;
+    #[test_only]
+    public fun init_for_testing(ctx: &mut TxContext) {
+        init(SKYWARD_SOARER{}, ctx)
+    }
+
+    #[test_only]
+    public fun name(nft: &SkywardSoarer): String {
+        nft.name
+    }
+
+    #[test_only]
+    public fun image_url(nft: &SkywardSoarer): String {
+        nft.image_url
+    }
+
+    #[test_only]
+    public fun description(nft: &SkywardSoarer): String {
+        nft.description
+    }
+
+    #[test_only]
+    public fun project_url(nft: &SkywardSoarer): String {
+        nft.project_url
+    }
+
+    #[test_only]
+    public fun link(nft: &SkywardSoarer): String {
+        nft.link
+    }
+
+}
+
+#[test_only]
+module skyward_soarer::skyward_soarer_tests {
+    use sui::test_scenario;
+    use sui::test_utils;
+    use std::vector;
+    use std::string::{Self};
+    use sui::package::{Publisher};
+    use skyward_soarer::skyward_soarer::{Self, SkywardSoarer};
+    const NFT_NAME: vector<u8> = b"SkywardSoarer NFT";
+    const NFT_IMAGE_URL: vector<u8> = b"bafybeifsp6xtj5htj5dc2ygbgijsr5jpvck56yqom6kkkuc2ujob3afzce";
+    const NFT_DESCRIPTION: vector<u8> = b"SkywardSoarer NFT Description";
+    const NFT_PROJECT_URL: vector<u8> = b"https://skyward.soarer.com";
+    const NFT_LINK: vector<u8> = b"https://skyward.soarer.com/link";
+    const PUBLISHER: address = @0xA;
 
     #[test]
     fun test_mint(){
         let scenario = test_scenario::begin(PUBLISHER);
         {
-            init(SKYWARD_SOARER{}, test_scenario::ctx(&mut scenario))
+            skyward_soarer::init_for_testing(test_scenario::ctx(&mut scenario))
         };
         test_scenario::next_tx(&mut scenario, PUBLISHER);
         {
             let owner = test_scenario::take_from_sender<Publisher>(&scenario);
-            mint(
+            skyward_soarer::mint(
                 &owner,
                 10,
                 string::utf8(NFT_NAME),
@@ -144,8 +181,11 @@ module skyward_soarer::skyward_soarer {
 
             while(!vector::is_empty(&nft_ids)) {
                 let nft = test_scenario::take_from_sender_by_id<SkywardSoarer>(&scenario, vector::pop_back(&mut nft_ids));
-                test_utils::assert_eq(string::index_of(&nft.name, &string::utf8(NFT_NAME)), 0);
-                test_utils::assert_eq(string::index_of(&nft.image_url, &string::utf8(NFT_IMAGE_URL)), 0);
+                test_utils::assert_eq(string::index_of(&skyward_soarer::name(&nft), &string::utf8(NFT_NAME)), 0);
+                test_utils::assert_eq(string::index_of(&skyward_soarer::image_url(&nft), &string::utf8(NFT_IMAGE_URL)), 0);
+                test_utils::assert_eq(string::index_of(&skyward_soarer::description(&nft), &string::utf8(NFT_DESCRIPTION)), 0);
+                test_utils::assert_eq(string::index_of(&skyward_soarer::project_url(&nft), &string::utf8(NFT_PROJECT_URL)), 0);
+                test_utils::assert_eq(string::index_of(&skyward_soarer::link(&nft), &string::utf8(NFT_LINK)), 0);
                 test_scenario::return_to_sender<SkywardSoarer>(&scenario, nft);
             };
         };
