@@ -98,25 +98,56 @@ module embryo::embryo {
         object::delete(id);
     }
 
-    #[test_only] use sui::test_scenario;
-    #[test_only] use sui::test_utils;
-    #[test_only] use std::vector;
-    #[test_only] const NFT_NAME: vector<u8> = b"Embryo NFT";
-    #[test_only] const NFT_IMAGE_URL: vector<u8> = b"bafybeifsp6xtj5htj5dc2ygbgijsr5jpvck56yqom6kkkuc2ujob3afzce";
-    #[test_only] const NFT_DESCRIPTION: vector<u8> = b"Embryo NFT Description";
-    #[test_only] const NFT_PROJECT_URL: vector<u8> = b"https://embryo.com";
-    #[test_only] const PUBLISHER: address = @0xA;
+    #[test_only]
+    public fun init_for_testing(ctx: &mut TxContext) {
+        init(EMBRYO{}, ctx)
+    }
+
+    #[test_only]
+    public fun name(nft: &Embryo): String {
+        nft.name
+    }
+
+    #[test_only]
+    public fun image_url(nft: &Embryo): String {
+        nft.image_url
+    }
+
+    #[test_only]
+    public fun description(nft: &Embryo): String {
+        nft.description
+    }
+
+    #[test_only]
+    public fun project_url(nft: &Embryo): String {
+        nft.project_url
+    }
+}
+
+#[test_only]
+module embryo::embryo_tests {
+    use sui::test_scenario;
+    use sui::test_utils;
+    use std::vector;
+    use std::string::{Self};
+    use sui::package::{Publisher};
+    use embryo::embryo::{Self, Embryo};
+    const NFT_NAME: vector<u8> = b"Embryo NFT";
+    const NFT_IMAGE_URL: vector<u8> = b"bafybeifsp6xtj5htj5dc2ygbgijsr5jpvck56yqom6kkkuc2ujob3afzce";
+    const NFT_DESCRIPTION: vector<u8> = b"Embryo NFT Description";
+    const NFT_PROJECT_URL: vector<u8> = b"https://embryo.com";
+    const PUBLISHER: address = @0xA;
 
     #[test]
     fun test_mint(){
         let scenario = test_scenario::begin(PUBLISHER);
         {
-            init(EMBRYO{}, test_scenario::ctx(&mut scenario))
+            embryo::init_for_testing(test_scenario::ctx(&mut scenario))
         };
         test_scenario::next_tx(&mut scenario, PUBLISHER);
         {
             let owner = test_scenario::take_from_sender<Publisher>(&scenario);
-            mint(
+            embryo::mint(
                 &owner,
                 10,
                 string::utf8(NFT_NAME),
@@ -135,8 +166,10 @@ module embryo::embryo {
 
             while(!vector::is_empty(&nft_ids)) {
                 let nft = test_scenario::take_from_sender_by_id<Embryo>(&scenario, vector::pop_back(&mut nft_ids));
-                test_utils::assert_eq(string::index_of(&nft.name, &string::utf8(NFT_NAME)), 0);
-                test_utils::assert_eq(string::index_of(&nft.image_url, &string::utf8(NFT_IMAGE_URL)), 0);
+                test_utils::assert_eq(string::index_of(&embryo::name(&nft), &string::utf8(NFT_NAME)), 0);
+                test_utils::assert_eq(string::index_of(&embryo::image_url(&nft), &string::utf8(NFT_IMAGE_URL)), 0);
+                test_utils::assert_eq(string::index_of(&embryo::description(&nft), &string::utf8(NFT_DESCRIPTION)), 0);
+                test_utils::assert_eq(string::index_of(&embryo::project_url(&nft), &string::utf8(NFT_PROJECT_URL)), 0);
                 test_scenario::return_to_sender<Embryo>(&scenario, nft);
             };
         };
