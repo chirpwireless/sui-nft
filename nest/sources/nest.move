@@ -4,13 +4,10 @@ module nest::nest {
 
     use std::string::{Self, String};
     use sui::display;
-    use sui::package::{Self, Publisher};
+    use sui::package::{Self};
 
 
     // === Errors ===
-
-    /// The error code for when the sender is not owner of NFT contract.
-    const ENotOwner: u64 = 0;
 
     /// The error code for when the argument is invalid.
     const EInvalidArgument: u64 = 1;
@@ -33,7 +30,7 @@ module nest::nest {
     }
 
     /// The transfer capability to authorize the transfer of a NFT.
-    public struct TransferCap<phantom T> has key, store {
+    public struct AdminCap has key, store {
         /// The unique identifier of the capability.
         id: UID,
     }
@@ -66,13 +63,13 @@ module nest::nest {
         display::update_version(&mut display);
 
         transfer::public_transfer(publisher, ctx.sender());
-        transfer::public_transfer(TransferCap<NEST>{ id: object::new(ctx) }, ctx.sender());
+        transfer::public_transfer(AdminCap{ id: object::new(ctx) }, ctx.sender());
         transfer::public_transfer(display, ctx.sender());
     }
 
     /// Mints a new Nest NFT.
     public entry fun mint(
-            pub: &Publisher,
+            _: &AdminCap,
             mut count: u64,
             name: String,
             image_url: String,
@@ -81,8 +78,6 @@ module nest::nest {
             recipient: address,
             ctx: &mut TxContext,
         ) {
-        assert!(package::from_package<Nest>(pub), ENotOwner);
-        assert!(package::from_module<Nest>(pub), ENotOwner);
         assert!(count > 0, EInvalidArgument);
         while(count > 0) {
             let nft = Nest {
@@ -98,7 +93,7 @@ module nest::nest {
     }
 
     /// Transfers a Nest NFT to a new owner.
-    public entry fun transfer(_: &TransferCap<NEST>, nft: Nest, recipient: address) {
+    public entry fun transfer(_: &AdminCap, nft: Nest, recipient: address) {
         transfer::transfer(nft, recipient);
     }
 
@@ -130,9 +125,8 @@ module nest::nest {
 
 #[test_only]
 module nest::nest_tests {
-    use nest::nest::{Self, NEST, Nest, TransferCap};
+    use nest::nest::{Self, Nest, AdminCap};
     use std::string::{Self};
-    use sui::package::{Publisher};
     use sui::test_scenario;
     use sui::test_utils;
     const NFT_NAME: vector<u8> = b"Nest NFT";
@@ -149,7 +143,7 @@ module nest::nest_tests {
         };
         test_scenario::next_tx(&mut scenario, PUBLISHER);
         {
-            let owner = test_scenario::take_from_sender<Publisher>(&scenario);
+            let owner = test_scenario::take_from_sender<AdminCap>(&scenario);
             nest::mint(
                 &owner,
                 10,
@@ -160,7 +154,7 @@ module nest::nest_tests {
                 PUBLISHER,
                 scenario.ctx(),
             );
-            test_scenario::return_to_address<Publisher>(PUBLISHER, owner);
+            test_scenario::return_to_address<AdminCap>(PUBLISHER, owner);
         };
         test_scenario::next_tx(&mut scenario, PUBLISHER);
         {
@@ -189,10 +183,7 @@ module nest::nest_tests {
         };
         test_scenario::next_tx(&mut scenario, PUBLISHER);
         {
-            // The TransferCap might be transferred to another account
-            let cap = test_scenario::take_from_sender<TransferCap<NEST>>(&scenario);
-            transfer::public_transfer(cap, sender);
-            let owner = test_scenario::take_from_sender<Publisher>(&scenario);
+            let owner = test_scenario::take_from_sender<AdminCap>(&scenario);
             nest::mint(
                 &owner,
                 1,
@@ -203,14 +194,15 @@ module nest::nest_tests {
                 sender,
                 scenario.ctx(),
             );
-            test_scenario::return_to_address<Publisher>(PUBLISHER, owner);
+            // The AdminCap might be transferred to another account
+            transfer::public_transfer(owner, sender);
         };
         test_scenario::next_tx(&mut scenario, sender);
         {
-            let cap = test_scenario::take_from_sender<TransferCap<NEST>>(&scenario);
+            let cap = test_scenario::take_from_sender<AdminCap>(&scenario);
             let nft = test_scenario::take_from_sender<Nest>(&scenario);
             nest::transfer(&cap, nft, receiver);
-            test_scenario::return_to_sender<TransferCap<NEST>>(&scenario, cap);
+            test_scenario::return_to_sender<AdminCap>(&scenario, cap);
         };
         test_scenario::next_tx(&mut scenario, receiver);
         {
