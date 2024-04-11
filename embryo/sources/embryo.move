@@ -4,13 +4,10 @@ module embryo::embryo {
 
     use std::string::{Self, String};
     use sui::display;
-    use sui::package::{Self, Publisher};
+    use sui::package::{Self};
 
 
     // === Errors ===
-
-    /// The error code for when the sender is not owner of NFT contract.
-    const ENotOwner: u64 = 0;
 
     /// The error code for when the argument is invalid.
     const EInvalidArgument: u64 = 1;
@@ -29,6 +26,12 @@ module embryo::embryo {
         image_url: String,
         /// The URL of the project associated with the NFT.
         project_url: String,
+    }
+
+    /// The admin capability to authorize operations.
+    public struct AdminCap has key, store {
+        /// The unique identifier of the capability.
+        id: UID,
     }
 
     /// The one time witness for the Embryo NFT.
@@ -59,12 +62,13 @@ module embryo::embryo {
         display::update_version(&mut display);
 
         transfer::public_transfer(publisher, ctx.sender());
+        transfer::public_transfer(AdminCap{ id: object::new(ctx) }, ctx.sender());
         transfer::public_transfer(display, ctx.sender());
     }
 
     /// Mints a new Embryo NFT.
     public entry fun mint(
-            pub: &Publisher,
+            _: &AdminCap,
             mut count: u64,
             name: String,
             image_url: String,
@@ -73,8 +77,6 @@ module embryo::embryo {
             recipient: address,
             ctx: &mut TxContext,
         ) {
-        assert!(package::from_package<Embryo>(pub), ENotOwner);
-        assert!(package::from_module<Embryo>(pub), ENotOwner);
         assert!(count > 0, EInvalidArgument);
         while(count > 0) {
             let nft = Embryo {
@@ -123,11 +125,10 @@ module embryo::embryo {
 
 #[test_only]
 module embryo::embryo_tests {
+    use embryo::embryo::{Self, Embryo, AdminCap};
+    use std::string::{Self};
     use sui::test_scenario;
     use sui::test_utils;
-    use std::string::{Self};
-    use sui::package::{Publisher};
-    use embryo::embryo::{Self, Embryo};
     const NFT_NAME: vector<u8> = b"Embryo NFT";
     const NFT_IMAGE_URL: vector<u8> = b"bafybeifsp6xtj5htj5dc2ygbgijsr5jpvck56yqom6kkkuc2ujob3afzce";
     const NFT_DESCRIPTION: vector<u8> = b"Embryo NFT Description";
@@ -142,7 +143,7 @@ module embryo::embryo_tests {
         };
         test_scenario::next_tx(&mut scenario, PUBLISHER);
         {
-            let owner = test_scenario::take_from_sender<Publisher>(&scenario);
+            let owner = test_scenario::take_from_sender<AdminCap>(&scenario);
             embryo::mint(
                 &owner,
                 10,
@@ -153,7 +154,7 @@ module embryo::embryo_tests {
                 PUBLISHER,
                 scenario.ctx(),
             );
-            test_scenario::return_to_address<Publisher>(PUBLISHER, owner);
+            test_scenario::return_to_address<AdminCap>(PUBLISHER, owner);
         };
         test_scenario::next_tx(&mut scenario, PUBLISHER);
         {
