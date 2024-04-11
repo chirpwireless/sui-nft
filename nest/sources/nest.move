@@ -4,10 +4,7 @@ module nest::nest {
 
     use std::string::{Self, String};
     use sui::display;
-    use sui::object::{Self, UID};
     use sui::package::{Self, Publisher};
-    use sui::transfer;
-    use sui::tx_context::{Self, TxContext};
 
 
     // === Errors ===
@@ -22,7 +19,7 @@ module nest::nest {
     // === Structs ===
 
     /// The Nest NFT represents user perks.
-    struct Nest has key {
+    public struct Nest has key {
         /// The unique identifier of NFT.
         id: UID,
         /// The name of the NFT.
@@ -36,13 +33,13 @@ module nest::nest {
     }
 
     /// The transfer capability to authorize the transfer of a NFT.
-    struct TransferCap<phantom T> has key, store {
+    public struct TransferCap<phantom T> has key, store {
         /// The unique identifier of the capability.
         id: UID,
     }
 
     /// The one time witness for the Nest NFT.
-    struct NEST has drop{}
+    public struct NEST has drop{}
 
 
   // === Admin Functions ===
@@ -62,21 +59,21 @@ module nest::nest {
         ];
 
         let publisher = package::claim(otw, ctx);
-        let display = display::new_with_fields<Nest>(
+        let mut display = display::new_with_fields<Nest>(
             &publisher, keys, values, ctx
         );
 
         display::update_version(&mut display);
 
-        transfer::public_transfer(publisher, tx_context::sender(ctx));
-        transfer::public_transfer(TransferCap<NEST>{ id: object::new(ctx) }, tx_context::sender(ctx));
-        transfer::public_transfer(display, tx_context::sender(ctx));
+        transfer::public_transfer(publisher, ctx.sender());
+        transfer::public_transfer(TransferCap<NEST>{ id: object::new(ctx) }, ctx.sender());
+        transfer::public_transfer(display, ctx.sender());
     }
 
     /// Mints a new Nest NFT.
     public entry fun mint(
             pub: &Publisher,
-            count: u64,
+            mut count: u64,
             name: String,
             image_url: String,
             description:String,
@@ -135,11 +132,9 @@ module nest::nest {
 module nest::nest_tests {
     use nest::nest::{Self, NEST, Nest, TransferCap};
     use std::string::{Self};
-    use std::vector;
     use sui::package::{Publisher};
     use sui::test_scenario;
     use sui::test_utils;
-    use sui::transfer;
     const NFT_NAME: vector<u8> = b"Nest NFT";
     const NFT_IMAGE_URL: vector<u8> = b"bafybeifsp6xtj5htj5dc2ygbgijsr5jpvck56yqom6kkkuc2ujob3afzce";
     const NFT_DESCRIPTION: vector<u8> = b"NestNFT Description";
@@ -148,9 +143,9 @@ module nest::nest_tests {
 
     #[test]
     fun test_mint(){
-        let scenario = test_scenario::begin(PUBLISHER);
+        let mut scenario = test_scenario::begin(PUBLISHER);
         {
-            nest::init_for_testing(test_scenario::ctx(&mut scenario))
+            nest::init_for_testing(scenario.ctx())
         };
         test_scenario::next_tx(&mut scenario, PUBLISHER);
         {
@@ -163,21 +158,21 @@ module nest::nest_tests {
                 string::utf8(NFT_DESCRIPTION),
                 string::utf8(NFT_PROJECT_URL),
                 PUBLISHER,
-                test_scenario::ctx(&mut scenario),
+                scenario.ctx(),
             );
             test_scenario::return_to_address<Publisher>(PUBLISHER, owner);
         };
         test_scenario::next_tx(&mut scenario, PUBLISHER);
         {
-            let nft_ids = test_scenario::ids_for_sender<Nest>(&scenario);
-            test_utils::assert_eq(vector::length(&nft_ids), 10);
+            let mut nft_ids = test_scenario::ids_for_sender<Nest>(&scenario);
+            test_utils::assert_eq(nft_ids.length(), 10);
 
-            while(!vector::is_empty(&nft_ids)) {
-                let nft = test_scenario::take_from_sender_by_id<Nest>(&scenario, vector::pop_back(&mut nft_ids));
-                test_utils::assert_eq(string::index_of(&nest::name(&nft), &string::utf8(NFT_NAME)), 0);
-                test_utils::assert_eq(string::index_of(&nest::image_url(&nft), &string::utf8(NFT_IMAGE_URL)), 0);
-                test_utils::assert_eq(string::index_of(&nest::description(&nft), &string::utf8(NFT_DESCRIPTION)), 0);
-                test_utils::assert_eq(string::index_of(&nest::project_url(&nft), &string::utf8(NFT_PROJECT_URL)), 0);
+            while(!nft_ids.is_empty()) {
+                let nft = test_scenario::take_from_sender_by_id<Nest>(&scenario, nft_ids.pop_back());
+                test_utils::assert_eq(string::index_of(&nft.name(), &string::utf8(NFT_NAME)), 0);
+                test_utils::assert_eq(string::index_of(&nft.image_url(), &string::utf8(NFT_IMAGE_URL)), 0);
+                test_utils::assert_eq(string::index_of(&nft.description(), &string::utf8(NFT_DESCRIPTION)), 0);
+                test_utils::assert_eq(string::index_of(&nft.project_url(), &string::utf8(NFT_PROJECT_URL)), 0);
                 test_scenario::return_to_sender<Nest>(&scenario, nft);
             };
         };
@@ -188,9 +183,9 @@ module nest::nest_tests {
     fun test_transfer() {
         let sender = @0xB;
         let receiver =  @0xC;
-        let scenario = test_scenario::begin(PUBLISHER);
+        let mut scenario = test_scenario::begin(PUBLISHER);
         {
-            nest::init_for_testing(test_scenario::ctx(&mut scenario))
+            nest::init_for_testing(scenario.ctx())
         };
         test_scenario::next_tx(&mut scenario, PUBLISHER);
         {
@@ -206,7 +201,7 @@ module nest::nest_tests {
                 string::utf8(NFT_DESCRIPTION),
                 string::utf8(NFT_PROJECT_URL),
                 sender,
-                test_scenario::ctx(&mut scenario),
+                scenario.ctx(),
             );
             test_scenario::return_to_address<Publisher>(PUBLISHER, owner);
         };
@@ -220,7 +215,7 @@ module nest::nest_tests {
         test_scenario::next_tx(&mut scenario, receiver);
         {
             let nft_ids = test_scenario::ids_for_sender<Nest>(&scenario);
-            test_utils::assert_eq(vector::length(&nft_ids), 1);
+            test_utils::assert_eq(nft_ids.length(), 1);
         };
         test_scenario::end(scenario);
     }
