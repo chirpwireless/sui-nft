@@ -4,13 +4,10 @@ module skyward_soarer::skyward_soarer {
 
     use std::string::{Self, String};
     use sui::display;
-    use sui::package::{Self, Publisher};
+    use sui::package::{Self};
 
 
     // === Errors ===
-
-    /// The error code for when the sender is not owner of NFT contract.
-    const ENotOwner: u64 = 0;
 
     /// The error code for when the argument is invalid.
     const EInvalidArgument: u64 = 1;
@@ -32,6 +29,12 @@ module skyward_soarer::skyward_soarer {
         project_url: String,
         /// The link associated with NFT.
         link: String,
+    }
+
+    /// The admin capability to authorize operations.
+    public struct AdminCap has key, store {
+        /// The unique identifier of the capability.
+        id: UID,
     }
 
     /// The one time witness for the NFT.
@@ -64,12 +67,13 @@ module skyward_soarer::skyward_soarer {
         display::update_version(&mut display);
 
         transfer::public_transfer(publisher, ctx.sender());
+        transfer::public_transfer(AdminCap{ id: object::new(ctx) }, ctx.sender());
         transfer::public_transfer(display, ctx.sender());
     }
 
     /// Mints a new SkywardSoarer NFT.
     public entry fun mint(
-            pub: &Publisher,
+            _: &AdminCap,
             mut count: u64,
             name: String,
             image_url: String,
@@ -79,8 +83,6 @@ module skyward_soarer::skyward_soarer {
             recipient: address,
             ctx: &mut TxContext,
         ) {
-        assert!(package::from_package<SkywardSoarer>(pub), ENotOwner);
-        assert!(package::from_module<SkywardSoarer>(pub), ENotOwner);
         assert!(count > 0, EInvalidArgument);
         while(count > 0) {
             let nft = SkywardSoarer {
@@ -135,11 +137,10 @@ module skyward_soarer::skyward_soarer {
 
 #[test_only]
 module skyward_soarer::skyward_soarer_tests {
+    use skyward_soarer::skyward_soarer::{Self, SkywardSoarer, AdminCap};
+    use std::string::{Self};
     use sui::test_scenario;
     use sui::test_utils;
-    use std::string::{Self};
-    use sui::package::{Publisher};
-    use skyward_soarer::skyward_soarer::{Self, SkywardSoarer};
     const NFT_NAME: vector<u8> = b"SkywardSoarer NFT";
     const NFT_IMAGE_URL: vector<u8> = b"bafybeifsp6xtj5htj5dc2ygbgijsr5jpvck56yqom6kkkuc2ujob3afzce";
     const NFT_DESCRIPTION: vector<u8> = b"SkywardSoarer NFT Description";
@@ -155,7 +156,7 @@ module skyward_soarer::skyward_soarer_tests {
         };
         test_scenario::next_tx(&mut scenario, PUBLISHER);
         {
-            let owner = test_scenario::take_from_sender<Publisher>(&scenario);
+            let owner = test_scenario::take_from_sender<AdminCap>(&scenario);
             skyward_soarer::mint(
                 &owner,
                 10,
@@ -167,7 +168,7 @@ module skyward_soarer::skyward_soarer_tests {
                 PUBLISHER,
                 scenario.ctx(),
             );
-            test_scenario::return_to_address<Publisher>(PUBLISHER, owner);
+            test_scenario::return_to_address<AdminCap>(PUBLISHER, owner);
         };
         test_scenario::next_tx(&mut scenario, PUBLISHER);
         {
