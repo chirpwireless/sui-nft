@@ -4,13 +4,10 @@ module skyward::skyward {
 
     use std::string::{Self, String};
     use sui::display;
-    use sui::package::{Self, Publisher};
+    use sui::package::{Self};
 
 
     // === Errors ===
-
-    /// The error code for when the sender is not owner of NFT contract.
-    const ENotOwner: u64 = 0;
 
     /// The error code for when the argument is invalid.
     const EInvalidArgument: u64 = 1;
@@ -32,8 +29,8 @@ module skyward::skyward {
         project_url: String,
     }
 
-    /// The transfer capability to authorize the transfer of a NFT.
-    public struct TransferCap<phantom T> has key, store {
+    /// The admin capability to authorize operations.
+    public struct AdminCap has key, store {
         /// The unique identifier of the capability.
         id: UID,
     }
@@ -66,13 +63,13 @@ module skyward::skyward {
         display::update_version(&mut display);
 
         transfer::public_transfer(publisher, ctx.sender());
-        transfer::public_transfer(TransferCap<SKYWARD>{ id: object::new(ctx) }, ctx.sender());
+        transfer::public_transfer(AdminCap{ id: object::new(ctx) }, ctx.sender());
         transfer::public_transfer(display, ctx.sender());
     }
 
     /// Mints a new Skyward NFT.
     public entry fun mint(
-            pub: &Publisher,
+            _: &AdminCap,
             mut count: u64,
             name: String,
             image_url: String,
@@ -81,8 +78,6 @@ module skyward::skyward {
             recipient: address,
             ctx: &mut TxContext,
         ) {
-        assert!(package::from_package<Skyward>(pub), ENotOwner);
-        assert!(package::from_module<Skyward>(pub), ENotOwner);
         assert!(count > 0, EInvalidArgument);
         while(count > 0) {
             let nft = Skyward {
@@ -98,7 +93,7 @@ module skyward::skyward {
     }
 
     /// Transfers a Skyward NFT to a new owner.
-    public entry fun transfer(_: &TransferCap<SKYWARD>, nft: Skyward, recipient: address) {
+    public entry fun transfer(_: &AdminCap, nft: Skyward, recipient: address) {
         transfer::transfer(nft, recipient);
     }
 
@@ -130,9 +125,8 @@ module skyward::skyward {
 
 #[test_only]
 module skyward::skyward_tests {
-    use skyward::skyward::{Self, SKYWARD, Skyward, TransferCap};
+    use skyward::skyward::{Self, Skyward, AdminCap};
     use std::string::{Self};
-    use sui::package::{Publisher};
     use sui::test_scenario;
     use sui::test_utils;
     const NFT_NAME: vector<u8> = b"Skyward NFT";
@@ -149,7 +143,7 @@ module skyward::skyward_tests {
         };
         test_scenario::next_tx(&mut scenario, PUBLISHER);
         {
-            let owner = test_scenario::take_from_sender<Publisher>(&scenario);
+            let owner = test_scenario::take_from_sender<AdminCap>(&scenario);
             skyward::mint(
                 &owner,
                 10,
@@ -160,7 +154,7 @@ module skyward::skyward_tests {
                 PUBLISHER,
                 scenario.ctx(),
             );
-            test_scenario::return_to_address<Publisher>(PUBLISHER, owner);
+            test_scenario::return_to_address<AdminCap>(PUBLISHER, owner);
         };
         test_scenario::next_tx(&mut scenario, PUBLISHER);
         {
@@ -189,10 +183,7 @@ module skyward::skyward_tests {
         };
         test_scenario::next_tx(&mut scenario, PUBLISHER);
         {
-            // The TransferCap might be transferred to another account
-            let cap = test_scenario::take_from_sender<TransferCap<SKYWARD>>(&scenario);
-            transfer::public_transfer(cap, sender);
-            let owner = test_scenario::take_from_sender<Publisher>(&scenario);
+            let owner = test_scenario::take_from_sender<AdminCap>(&scenario);
             skyward::mint(
                 &owner,
                 1,
@@ -203,14 +194,16 @@ module skyward::skyward_tests {
                 sender,
                 scenario.ctx(),
             );
-            test_scenario::return_to_address<Publisher>(PUBLISHER, owner);
+
+            // The AdminCap might be transferred to another account
+            transfer::public_transfer(owner, sender);
         };
         test_scenario::next_tx(&mut scenario, sender);
         {
-            let cap = test_scenario::take_from_sender<TransferCap<SKYWARD>>(&scenario);
+            let owner = test_scenario::take_from_sender<AdminCap>(&scenario);
             let nft = test_scenario::take_from_sender<Skyward>(&scenario);
-            skyward::transfer(&cap, nft, receiver);
-            test_scenario::return_to_sender<TransferCap<SKYWARD>>(&scenario, cap);
+            skyward::transfer(&owner, nft, receiver);
+            test_scenario::return_to_sender<AdminCap>(&scenario, owner);
         };
         test_scenario::next_tx(&mut scenario, receiver);
         {
