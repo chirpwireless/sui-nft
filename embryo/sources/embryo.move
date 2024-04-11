@@ -4,10 +4,7 @@ module embryo::embryo {
 
     use std::string::{Self, String};
     use sui::display;
-    use sui::object::{Self, UID};
     use sui::package::{Self, Publisher};
-    use sui::transfer;
-    use sui::tx_context::{Self, TxContext};
 
 
     // === Errors ===
@@ -21,7 +18,7 @@ module embryo::embryo {
     // === Structs ===
 
     /// The Embryo NFT represents represents early adopter.
-    struct Embryo has key, store {
+    public struct Embryo has key, store {
         /// The unique identifier of the NFT.
         id: UID,
         /// The name of the NFT.
@@ -35,7 +32,7 @@ module embryo::embryo {
     }
 
     /// The one time witness for the Embryo NFT.
-    struct EMBRYO has drop{}
+    public struct EMBRYO has drop{}
 
 
   // === Admin Functions ===
@@ -55,20 +52,20 @@ module embryo::embryo {
         ];
 
         let publisher = package::claim(otw, ctx);
-        let display = display::new_with_fields<Embryo>(
+        let mut display = display::new_with_fields<Embryo>(
             &publisher, keys, values, ctx
         );
 
         display::update_version(&mut display);
 
-        transfer::public_transfer(publisher, tx_context::sender(ctx));
-        transfer::public_transfer(display, tx_context::sender(ctx));
+        transfer::public_transfer(publisher, ctx.sender());
+        transfer::public_transfer(display, ctx.sender());
     }
 
     /// Mints a new Embryo NFT.
     public entry fun mint(
             pub: &Publisher,
-            count: u64,
+            mut count: u64,
             name: String,
             image_url: String,
             description: String,
@@ -128,7 +125,6 @@ module embryo::embryo {
 module embryo::embryo_tests {
     use sui::test_scenario;
     use sui::test_utils;
-    use std::vector;
     use std::string::{Self};
     use sui::package::{Publisher};
     use embryo::embryo::{Self, Embryo};
@@ -140,9 +136,9 @@ module embryo::embryo_tests {
 
     #[test]
     fun test_mint(){
-        let scenario = test_scenario::begin(PUBLISHER);
+        let mut scenario = test_scenario::begin(PUBLISHER);
         {
-            embryo::init_for_testing(test_scenario::ctx(&mut scenario))
+            embryo::init_for_testing(scenario.ctx())
         };
         test_scenario::next_tx(&mut scenario, PUBLISHER);
         {
@@ -155,21 +151,21 @@ module embryo::embryo_tests {
                 string::utf8(NFT_DESCRIPTION),
                 string::utf8(NFT_PROJECT_URL),
                 PUBLISHER,
-                test_scenario::ctx(&mut scenario),
+                scenario.ctx(),
             );
             test_scenario::return_to_address<Publisher>(PUBLISHER, owner);
         };
         test_scenario::next_tx(&mut scenario, PUBLISHER);
         {
-            let nft_ids = test_scenario::ids_for_sender<Embryo>(&scenario);
-            test_utils::assert_eq(vector::length(&nft_ids), 10);
+            let mut nft_ids = test_scenario::ids_for_sender<Embryo>(&scenario);
+            test_utils::assert_eq(nft_ids.length(), 10);
 
-            while(!vector::is_empty(&nft_ids)) {
-                let nft = test_scenario::take_from_sender_by_id<Embryo>(&scenario, vector::pop_back(&mut nft_ids));
-                test_utils::assert_eq(string::index_of(&embryo::name(&nft), &string::utf8(NFT_NAME)), 0);
-                test_utils::assert_eq(string::index_of(&embryo::image_url(&nft), &string::utf8(NFT_IMAGE_URL)), 0);
-                test_utils::assert_eq(string::index_of(&embryo::description(&nft), &string::utf8(NFT_DESCRIPTION)), 0);
-                test_utils::assert_eq(string::index_of(&embryo::project_url(&nft), &string::utf8(NFT_PROJECT_URL)), 0);
+            while(!nft_ids.is_empty()) {
+                let nft = test_scenario::take_from_sender_by_id<Embryo>(&scenario, nft_ids.pop_back());
+                test_utils::assert_eq(string::index_of(&nft.name(), &string::utf8(NFT_NAME)), 0);
+                test_utils::assert_eq(string::index_of(&nft.image_url(), &string::utf8(NFT_IMAGE_URL)), 0);
+                test_utils::assert_eq(string::index_of(&nft.description(), &string::utf8(NFT_DESCRIPTION)), 0);
+                test_utils::assert_eq(string::index_of(&nft.project_url(), &string::utf8(NFT_PROJECT_URL)), 0);
                 test_scenario::return_to_sender<Embryo>(&scenario, nft);
             };
         };
