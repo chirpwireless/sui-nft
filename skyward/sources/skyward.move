@@ -73,7 +73,7 @@ module skyward::skyward {
             mut count: u64,
             name: String,
             image_url: String,
-            description:String,
+            description: String,
             project_url: String,
             recipient: address,
             ctx: &mut TxContext,

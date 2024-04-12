@@ -17,7 +17,7 @@ module nest::nest {
 
     /// The Nest NFT represents user perks.
     public struct Nest has key {
-        /// The unique identifier of NFT.
+        /// The unique identifier of the NFT.
         id: UID,
         /// The name of the NFT.
         name: String,
@@ -29,7 +29,7 @@ module nest::nest {
         project_url: String,
     }
 
-    /// The transfer capability to authorize the transfer of a NFT.
+    /// The admin capability to authorize operations.
     public struct AdminCap has key, store {
         /// The unique identifier of the capability.
         id: UID,
@@ -73,7 +73,7 @@ module nest::nest {
             mut count: u64,
             name: String,
             image_url: String,
-            description:String,
+            description: String,
             project_url: String,
             recipient: address,
             ctx: &mut TxContext,
@@ -194,15 +194,16 @@ module nest::nest_tests {
                 sender,
                 scenario.ctx(),
             );
+
             // The AdminCap might be transferred to another account
             transfer::public_transfer(owner, sender);
         };
         test_scenario::next_tx(&mut scenario, sender);
         {
-            let cap = test_scenario::take_from_sender<AdminCap>(&scenario);
+            let owner = test_scenario::take_from_sender<AdminCap>(&scenario);
             let nft = test_scenario::take_from_sender<Nest>(&scenario);
-            nest::transfer(&cap, nft, receiver);
-            test_scenario::return_to_sender<AdminCap>(&scenario, cap);
+            nest::transfer(&owner, nft, receiver);
+            test_scenario::return_to_sender<AdminCap>(&scenario, owner);
         };
         test_scenario::next_tx(&mut scenario, receiver);
         {
@@ -211,5 +212,4 @@ module nest::nest_tests {
         };
         test_scenario::end(scenario);
     }
-
 }

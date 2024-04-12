@@ -12,6 +12,7 @@ module embryo::embryo {
     /// The error code for when the argument is invalid.
     const EInvalidArgument: u64 = 1;
 
+
     // === Structs ===
 
     /// The Embryo NFT represents represents early adopter.
